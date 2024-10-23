@@ -9,25 +9,21 @@
 import uuid
 import redis
 from typing import Union, Callable
-from functools import wraps
+import functools
 
 
 def count_calls(method: Callable) -> Callable:
     """
-    Counts the number of calls made to a method in a Cache class.
+    A decorator that counts the number of times a method is called.
+            The count is stored in Redis using the method's qualified name as the key.
     """
-    @wraps(method)
-    def invoker(*args):
-        """
-        Increments the call counter of the the given method.
-        """
-        if args[0]._redis.exists(method.__qualname__) == 0:
-            args[0]._redis.set(method.__qualname__, 1)
-        else:
-            args[0]._redis.incr(method.__qualname__, 1)
-            return method(*args)
-        return invoker
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        key = method.__qualname__
+        self._redis.incr(key)
+        return method(self, *args, **kwargs)
 
+    return wrapper
 
 class Cache:
     """
@@ -50,7 +46,7 @@ class Cache:
 
         return key
 
-    def get(self, key: str, fn: Callable = None) -> Union[str, bytes, int, float, None]:
+    def get(self, key: str, fn: Callable = None) -> Union[str, bytes, int, float]:
         """
         Retrieves a value from a Redis.
         """
