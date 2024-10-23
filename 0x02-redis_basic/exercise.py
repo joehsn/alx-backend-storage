@@ -11,6 +11,25 @@ import redis
 from typing import Union, Callable
 import functools
 
+def call_history(method: Callable) -> Callable:
+    """
+    A decorator that stores the history of inputs and outputs for a particular function.
+            Stores the inputs and outputs in Redis lists.
+    """
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        input_key = f"{method.__qualname__}:inputs"
+        output_key = f"{method.__qualname__}:outputs"
+        self._redis.rpush(input_key, str(args))
+
+        result = method(self, *args, **kwargs)
+
+        self._redis.rpush(output_key, str(result))
+
+        return result
+
+    return wrapper
+
 
 def count_calls(method: Callable) -> Callable:
     """
